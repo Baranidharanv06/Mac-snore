@@ -4,7 +4,6 @@
 
 A tiny macOS menu bar app that detects when you've gone idle and starts snoring — then cuts off the moment you come back.
 
-Inspired by [spank](https://github.com/taigrr/spank) — because your Mac deserves a personality.
 
 ---
 
