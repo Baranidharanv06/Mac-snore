@@ -6,6 +6,8 @@ GitHub: github.com/Baranidharanv06/mac-snore
 """
 
 import rumps
+rumps.App.__dict__  # ensure rumps loaded
+
 import threading
 import time
 import subprocess
@@ -25,10 +27,6 @@ ICON_OFF     = "---"
 class MacSnoreApp(rumps.App):
     def __init__(self):
         super().__init__(ICON_IDLE, quit_button=None)
-
-        # Hide from dock — menu bar only
-        import AppKit
-        AppKit.NSApp.setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
 
         self.menu = [
             rumps.MenuItem("mac-snore", callback=None),
