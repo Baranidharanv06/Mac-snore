@@ -6,8 +6,6 @@ GitHub: github.com/Baranidharanv06/mac-snore
 """
 
 import rumps
-rumps.App.__dict__  # ensure rumps loaded
-
 import threading
 import time
 import subprocess
@@ -51,6 +49,17 @@ class MacSnoreApp(rumps.App):
 
         self._tick = rumps.Timer(self._update_menu, 1)
         self._tick.start()
+
+        # Hide dock icon after app is fully initialized
+        self._dock_timer = rumps.Timer(self._hide_dock_icon, 0.1)
+        self._dock_timer.start()
+
+    def _hide_dock_icon(self, _):
+        import AppKit
+        AppKit.NSApp.setActivationPolicy_(
+            AppKit.NSApplicationActivationPolicyAccessory
+        )
+        self._dock_timer.stop()  # only need to run once
 
     def _get_idle_seconds(self):
         try:
