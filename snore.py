@@ -13,7 +13,7 @@ import os
 from pynput import mouse, keyboard
 
 # ── Config ────────────────────────────────────────────────────────────────────
-IDLE_THRESHOLD = 30        # seconds before snoring starts
+IDLE_THRESHOLD = 60        # seconds before snoring starts
 SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "sounds")
 SNORE_SOUND  = os.path.join(SOUNDS_DIR, "snore.mp3")
 

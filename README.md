@@ -1,96 +1,150 @@
-# mac-snore 😴
+# mac-snore
 
-> Your Mac falls asleep when you do.
+> Your Mac snores when you do.
 
-A silly macOS menu bar app that **snores when you go idle** — and wakes up with a startled sound + notification when you come back.
+A tiny macOS menu bar app that detects when you've gone idle and starts snoring — then cuts off the moment you come back.
 
-Inspired by [spank](https://github.com/taigrr/spank) — because your Mac deserves feelings.
+Inspired by [spank](https://github.com/taigrr/spank) — because your Mac deserves a personality.
 
 ---
 
-## Demo
+## What it does
 
-| State | What happens |
-|-------|-------------|
-| You go idle for 30s | Mac starts snoring 💤 |
-| You move the mouse | Mac wakes up startled 👀 + notification |
-| Menu bar icon | Shows 😴 (watching) or 💤 (snoring) |
+- Sits silently in your menu bar as `zzZ`
+- After 30 seconds of inactivity → your Mac starts snoring 💤
+- The second you touch your mouse or keyboard → snoring stops instantly
+- Shows a notification welcoming you back
+- Uses macOS native idle detection — zero false triggers while you're actually working
+
+---
+
+## Menu bar states
+
+| Icon | Meaning |
+|------|---------|
+| `zzZ` | Watching, you're active |
+| `ZZZ` | Snoring, you're idle |
+| `---` | Disabled |
 
 ---
 
 ## Requirements
 
 - macOS (Apple Silicon or Intel)
-- Python 3.8+
-- Terminal with **Accessibility permissions**
+- Python 3.12+
+- Homebrew
 
 ---
 
-## Install & Run
+## Install
 
 ```bash
 # 1. Clone
 git clone https://github.com/Baranidharanv06/mac-snore.git
 cd mac-snore
 
-# 2. Setup
-chmod +x setup.sh
-./setup.sh
+# 2. Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-# 3. Run
+# 3. Install dependencies
+pip install rumps pynput
+
+# 4. Add your snore sound
+# Drop any .mp3 into the sounds/ folder named snore.mp3
+mkdir sounds
+# cp ~/Downloads/snore.mp3 sounds/snore.mp3
+
+# 5. Run
 python3 snore.py
 ```
 
-> ⚠️ On first run, macOS will ask for **Accessibility permissions** for Terminal.
-> Go to **System Settings → Privacy & Security → Accessibility** and enable Terminal.
+> ⚠️ macOS will ask for **Accessibility permissions** on first run.
+> Go to **System Settings → Privacy & Security → Accessibility** → enable Terminal.
 
 ---
 
-## Configuration
+## Run permanently (auto-start on login)
 
-Edit the top of `snore.py` to customize:
+**Step 1 — Create a launch script:**
+```bash
+cat > ~/mac-snore/run.sh << 'SCRIPT'
+#!/bin/bash
+cd ~/mac-snore
+source venv/bin/activate
+python3 snore.py
+SCRIPT
+chmod +x ~/mac-snore/run.sh
+```
+
+**Step 2 — Create a Launch Agent:**
+```bash
+cat > ~/Library/LaunchAgents/com.barani.macsnore.plist << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.barani.macsnore</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/YOUR_USERNAME/mac-snore/run.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+PLIST
+```
+> Replace `YOUR_USERNAME` with your macOS username.
+
+**Step 3 — Load it:**
+```bash
+launchctl load ~/Library/LaunchAgents/com.barani.macsnore.plist
+```
+
+Close the terminal. `zzZ` lives in your menu bar forever now.
+
+---
+
+## Controls
+
+| Action | Command |
+|--------|---------|
+| Stop temporarily | `launchctl unload ~/Library/LaunchAgents/com.barani.macsnore.plist` |
+| Start again | `launchctl load ~/Library/LaunchAgents/com.barani.macsnore.plist` |
+| Remove permanently | `launchctl unload ~/Library/LaunchAgents/com.barani.macsnore.plist && rm ~/Library/LaunchAgents/com.barani.macsnore.plist` |
+
+---
+
+## Customize
+
+Edit the top of `snore.py`:
 
 ```python
 IDLE_THRESHOLD = 30   # seconds before snoring starts
-SNORE_INTERVAL = 4    # seconds between each snore sound
 ```
 
----
-
-## Custom Sounds
-
-Drop your own `.aiff` files into the `sounds/` folder:
-
-| Filename | When it plays |
-|----------|--------------|
-| `snore.aiff` | While idle/snoring |
-| `wake.aiff` | When you come back |
-
-No custom sounds? It falls back to built-in macOS sounds automatically.
+Swap in any snore sound by replacing `sounds/snore.mp3`.
 
 ---
 
 ## How it works
 
-- Uses **pynput** to detect mouse/keyboard activity
-- Uses **rumps** to live in the macOS menu bar
-- Uses **afplay** (built into macOS) to play sounds
-- Zero network access, 100% local
+- Uses `ioreg` to read macOS native HID idle time — the same system macOS uses for screen sleep
+- Uses `rumps` for the menu bar UI
+- Uses `pynput` to detect when you return from idle
+- Uses `afplay` to play audio (built into macOS, no dependencies)
+- 100% local, zero network access, no telemetry
 
 ---
 
-## Menu Bar
+## Built by
 
-Click the 😴 icon in your menu bar to:
-- See how long you've been idle
-- Toggle it on/off
-- Quit
-
----
-
-## Made by
-
-[@Baranidharanv06](https://github.com/Baranidharanv06) — built for fun, shipped with love 🚀
+[@Baranidharanv06](https://github.com/Baranidharanv06) 
 
 ---
 
