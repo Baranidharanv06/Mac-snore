@@ -39,8 +39,8 @@ class MacSnoreApp(rumps.App):
 
         self.enabled = True
         self.is_snoring = False
+        self._snore_process = None
         self.last_activity = time.time()
-        self._snore_process = None  # track afplay so we can kill it
 
         self._start_listeners()
 
@@ -50,11 +50,26 @@ class MacSnoreApp(rumps.App):
         self._tick = rumps.Timer(self._update_menu, 1)
         self._tick.start()
 
+    # ── Use macOS native idle time ─────────────────────────────────────────────
+    def _get_idle_seconds(self):
+        """Ask macOS how long since the user last touched anything."""
+        try:
+            result = subprocess.run(
+                ["ioreg", "-c", "IOHIDSystem"],
+                capture_output=True, text=True
+            )
+            for line in result.stdout.split("\n"):
+                if "HIDIdleTime" in line:
+                    ns = int(line.split("=")[-1].strip())
+                    return ns / 1_000_000_000  # nanoseconds → seconds
+        except Exception:
+            pass
+        return 0
+
+    # ── Listeners (only used to detect wake from snore) ───────────────────────
     def _start_listeners(self):
         def on_activity(*args, **kwargs):
-            was_snoring = self.is_snoring
-            self.last_activity = time.time()
-            if was_snoring:
+            if self.is_snoring:
                 self._wake_up()
 
         self._mouse_listener = mouse.Listener(
@@ -66,12 +81,14 @@ class MacSnoreApp(rumps.App):
         self._mouse_listener.start()
         self._keyboard_listener.start()
 
+    # ── Idle watcher ──────────────────────────────────────────────────────────
     def _watch_idle(self):
         while True:
             time.sleep(1)
             if not self.enabled:
                 continue
-            idle = time.time() - self.last_activity
+            idle = self._get_idle_seconds()
+            self.last_activity = idle  # store for menu display
             if idle >= IDLE_THRESHOLD and not self.is_snoring:
                 self.is_snoring = True
                 self._start_snoring()
@@ -81,18 +98,22 @@ class MacSnoreApp(rumps.App):
             while self.is_snoring and self.enabled:
                 self.title = ICON_SNORING
                 self._snore_process = subprocess.Popen(["afplay", SNORE_SOUND])
-                self._snore_process.wait()  # wait for audio to finish naturally
+                # Poll every 0.2s so we can stop mid-audio instantly
+                while self._snore_process.poll() is None:
+                    if not self.is_snoring:
+                        self._stop_snore_audio()
+                        return
+                    time.sleep(0.2)
         threading.Thread(target=snore_loop, daemon=True).start()
 
     def _stop_snore_audio(self):
-        """Kill the afplay process immediately."""
         if self._snore_process and self._snore_process.poll() is None:
             self._snore_process.terminate()
             self._snore_process = None
 
     def _wake_up(self):
         self.is_snoring = False
-        self._stop_snore_audio()  # cut the audio instantly
+        self._stop_snore_audio()
         self.title = ICON_IDLE
         rumps.notification(
             title="mac-snore",
@@ -102,7 +123,7 @@ class MacSnoreApp(rumps.App):
         )
 
     def _update_menu(self, _):
-        idle = int(time.time() - self.last_activity)
+        idle = int(self._get_idle_seconds())
         self.menu["Idle Time: 0s"].title = f"Idle Time: {idle}s"
         if self.is_snoring:
             self.menu["Status: Watching"].title = "Status: Snoring"
@@ -120,7 +141,6 @@ class MacSnoreApp(rumps.App):
             sender.title = "Disabled"
         else:
             self.title = ICON_IDLE
-            self.last_activity = time.time()
             sender.title = "Enabled"
 
     def quit_app(self, _):
